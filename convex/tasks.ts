@@ -287,7 +287,7 @@ export const summary: RegisteredQuery<
   Promise<Doc<"summaries"> | null>
 > = query({
   handler: async (ctx) => {
-    const { familyId } = await authenticateWithFamily(ctx);
+    const { familyId } = await authenticate(ctx);
 
     if (!familyId) {
       return null;
