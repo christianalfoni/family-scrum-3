@@ -187,7 +187,7 @@ export const lists: RegisteredQuery<
   Promise<Doc<"taskLists">[]>
 > = query({
   handler: async (ctx) => {
-    const { familyId } = await authenticateWithFamily(ctx);
+    const { familyId } = await authenticate(ctx);
 
     if (!familyId) {
       return [];
