@@ -3,6 +3,6 @@ import { auth } from "./auth";
 
 const http = httpRouter();
 
-auth.addHttpRoutes(http);
+auth.auth.addHttpRoutes(http);
 
 export default http;

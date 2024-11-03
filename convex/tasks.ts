@@ -1,5 +1,6 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { ConvexError, v } from "convex/values";
+
 import {
   action,
   internalMutation,
@@ -13,8 +14,9 @@ import { OpenAI } from "openai";
 import { zodResponseFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import { ParsedChatCompletion } from "openai/resources/beta/chat/completions.mjs";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 import { ChatCompletion } from "openai/resources/index.mjs";
+import { RegisteredAction, RegisteredQuery } from "convex/server";
 
 const openai = new OpenAI();
 
@@ -179,7 +181,11 @@ export const addTask = internalMutation({
   },
 });
 
-export const lists = query({
+export const lists: RegisteredQuery<
+  "public",
+  Record<string, never>,
+  Promise<Doc<"taskLists">[]>
+> = query({
   handler: async (ctx) => {
     const { familyId } = await authenticateWithFamily(ctx);
 
@@ -275,7 +281,11 @@ export const deleteList = mutation({
   },
 });
 
-export const summary = query({
+export const summary: RegisteredQuery<
+  "public",
+  Record<string, never>,
+  Promise<Doc<"summaries"> | null>
+> = query({
   handler: async (ctx) => {
     const { familyId } = await authenticateWithFamily(ctx);
 
@@ -292,7 +302,11 @@ export const summary = query({
   },
 });
 
-export const createSummary = action({
+export const createSummary: RegisteredAction<
+  "public",
+  Record<string, never>,
+  Promise<void>
+> = action({
   handler: async (ctx) => {
     const [summary, tasks] = await Promise.all([
       ctx.runQuery(api.tasks.summary),
