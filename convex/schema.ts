@@ -16,7 +16,9 @@ export default defineSchema({
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
     familyId: v.optional(v.id("families")),
-  }),
+  })
+    .index("email", ["email"])
+    .index("phone", ["phone"]),
   tasks: defineTable({
     userId: v.id("users"),
     familyId: v.id("families"),
