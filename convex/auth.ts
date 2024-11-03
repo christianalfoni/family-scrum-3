@@ -1,16 +1,15 @@
 import Google from "@auth/core/providers/google";
 import { convexAuth } from "@convex-dev/auth/server";
 
-export const {
-  auth,
-  signIn,
-  signOut,
-  store,
-}: {
-  auth: ReturnType<typeof convexAuth>["auth"];
-  signIn: ReturnType<typeof convexAuth>["signIn"];
-  signOut: ReturnType<typeof convexAuth>["signOut"];
-  store: ReturnType<typeof convexAuth>["store"];
-} = convexAuth({
+const convexAuthInstance: ReturnType<typeof convexAuth> = convexAuth({
   providers: [Google],
 });
+
+export const auth: ReturnType<typeof convexAuth>["auth"] =
+  convexAuthInstance.auth;
+export const signIn: ReturnType<typeof convexAuth>["signIn"] =
+  convexAuthInstance.signIn;
+export const signOut: ReturnType<typeof convexAuth>["signOut"] =
+  convexAuthInstance.signOut;
+export const store: ReturnType<typeof convexAuth>["store"] =
+  convexAuthInstance.store;
