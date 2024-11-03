@@ -1,5 +1,3 @@
-import { Chat } from "@/Chat/Chat";
-import { ChatIntro } from "@/Chat/ChatIntro";
 import { Layout } from "@/Layout";
 import { SignInForm } from "@/SignInForm";
 import { UserMenu } from "@/components/UserMenu";
@@ -10,6 +8,7 @@ import {
   AuthLoading,
 } from "convex/react";
 import { api } from "../convex/_generated/api";
+import { TaskManagerComponent } from "./components/task-manager";
 
 export default function App() {
   const user = useQuery(api.users.viewer);
@@ -24,8 +23,7 @@ export default function App() {
       <>
         <AuthLoading>Signing in...</AuthLoading>
         <Authenticated>
-          <ChatIntro />
-          <Chat viewer={(user ?? {})._id!} />
+          <TaskManagerComponent />
         </Authenticated>
         <Unauthenticated>
           <SignInForm />
