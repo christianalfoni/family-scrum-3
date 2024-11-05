@@ -18,6 +18,13 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { SparkleButton } from "./sparkle-button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "./ui/card";
 
 type NoteMutation =
   | {
@@ -180,9 +187,25 @@ export function Notes() {
             className="mx-auto text-xl leading-relaxed markdown"
             style={{ maxWidth: "500px" }}
           >
-            <Markdown options={{ forceBlock: true }}>
-              {summary.summary}
-            </Markdown>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  Summary
+                </CardTitle>
+                <CardDescription>
+                  {new Date(summary.date).toLocaleDateString(undefined, {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Markdown options={{ forceBlock: true }}>
+                  {summary.summary}
+                </Markdown>
+              </CardContent>
+            </Card>
           </div>
         ) : null}
         {!selectedList && (summary === null || (summary && summary.isStale)) ? (

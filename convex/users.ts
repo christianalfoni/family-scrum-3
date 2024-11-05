@@ -1,7 +1,27 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, QueryCtx } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
-import { authenticate } from "./utils";
+import { RegisteredQuery } from "convex/server";
+import { Doc } from "./_generated/dataModel";
+
+async function authenticate(ctx: QueryCtx) {
+  const userId = await getAuthUserId(ctx);
+
+  if (!userId) {
+    throw new ConvexError("Not signed in");
+  }
+
+  const user = await ctx.db.get(userId);
+
+  if (!user) {
+    throw new ConvexError("User not found");
+  }
+
+  return {
+    userId,
+    familyId: user.familyId,
+  };
+}
 
 export const viewer = query({
   args: {},
@@ -39,7 +59,11 @@ export const createFamily = mutation({
   },
 });
 
-export const family = query({
+export const family: RegisteredQuery<
+  "public",
+  Record<string, never>,
+  Promise<Doc<"families">>
+> = query({
   handler: async (ctx) => {
     const { familyId } = await authenticate(ctx);
 

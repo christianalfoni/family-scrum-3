@@ -6,6 +6,7 @@ import {
   mutation,
   MutationCtx,
   query,
+  QueryCtx,
 } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { OpenAI } from "openai";
@@ -15,7 +16,36 @@ import { ParsedChatCompletion } from "openai/resources/beta/chat/completions.mjs
 import { Doc, Id } from "./_generated/dataModel";
 import { ChatCompletion } from "openai/resources/index.mjs";
 import { RegisteredAction, RegisteredQuery } from "convex/server";
-import { authenticate, authenticateWithFamily } from "./utils";
+import { getAuthUserId } from "@convex-dev/auth/server";
+
+async function authenticate(ctx: QueryCtx) {
+  const userId = await getAuthUserId(ctx);
+
+  if (!userId) {
+    throw new ConvexError("Not signed in");
+  }
+
+  const user = await ctx.db.get(userId);
+
+  if (!user) {
+    throw new ConvexError("User not found");
+  }
+
+  return {
+    userId,
+    familyId: user.familyId,
+  };
+}
+
+async function authenticateWithFamily(ctx: QueryCtx) {
+  const { userId, familyId } = await authenticate(ctx);
+
+  if (!familyId) {
+    throw new ConvexError("Not in a family");
+  }
+
+  return { userId, familyId };
+}
 
 const openai = new OpenAI();
 
@@ -305,13 +335,21 @@ export const createSummary: RegisteredAction<
       messages: [
         {
           role: "system",
-          content: `You are a ${family} family assistant. You will get a list of notes and should create a brief summary of the notes, but highlighting notes that is considered an event. The summary should be in ${family.language} and you should respond without a title to the summary. End the response by writing some encouraging words to the family.`,
+          content: `You are a ${family} family assistant. Please follow these instructions:
+          
+- You will get a list of notes and you should give a brief summary of them
+- Highlight notes that is considered an event
+- The summary should be in ${family.language} and you should respond without a title to the summary
+- End the response by writing some encouraging words to the family`,
         },
         {
           role: "user",
-          content: `This is the list of notes:
+          content: `This is our family, written in ${family.language}:
+${family.description}          
           
-${notes.map((note) => `- ${note.description}`).join("\n")}
+Todays date is ${new Date().toISOString().split("T")[0]} and this is the list of notes:
+          
+${notes.map((note) => `${note.description}${note.isCompleted ? " (COMPLETED)" : ""}`).join("\n")}
 `,
         },
       ],
@@ -345,6 +383,7 @@ export const insertSummary = internalMutation({
         familyId,
         isStale: false,
         summary,
+        date: new Date().toISOString().split("T")[0], // Format YYYY-MM-DD
       });
     }
   },
