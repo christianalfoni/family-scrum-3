@@ -336,21 +336,21 @@ export const createSummary: RegisteredAction<
         {
           role: "system",
           content: `You are a ${family} family assistant. Please follow these instructions:
-          
-- You will get a list of notes and you should give a brief summary of them
-- Highlight notes that is considered an event
-- The summary should be in ${family.language} and you should respond without a title to the summary
-- End the response by writing some encouraging words to the family`,
+        
+  - You will get a list of notes and you should give a brief summary of them
+  - Highlight notes that is considered an event
+  - The summary should be in ${family.language} and you should respond without a title to the summary
+  - End the response by writing some encouraging words to the family`,
         },
         {
           role: "user",
           content: `This is our family, written in ${family.language}:
-${family.description}          
-          
-Todays date is ${new Date().toISOString().split("T")[0]} and this is the list of notes:
-          
-${notes.map((note) => `${note.description}${note.isCompleted ? " (COMPLETED)" : ""}`).join("\n")}
-`,
+  ${family.description}          
+        
+  Todays date is ${new Date().toLocaleDateString("en-US", { weekday: "long" })} ${new Date().toISOString().split("T")[0]} and this is the list of notes:
+        
+  ${notes.map((note) => `${note.description}${note.isCompleted ? " (COMPLETED)" : ""}`).join("\n")}
+  `,
         },
       ],
     });
