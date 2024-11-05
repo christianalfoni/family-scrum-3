@@ -12,14 +12,14 @@ import {
   Check,
   CheckSquare,
   ListCheck,
-  Wand2,
 } from "lucide-react";
-import { List, useTasks } from "@/hooks/useTasks";
+import { List, useNotes } from "@/hooks/useNotes";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
+import { SparkleButton } from "./sparkle-button";
 
-type TaskMutation =
+type NoteMutation =
   | {
       isUpdating: true;
       error: null;
@@ -33,62 +33,63 @@ type TaskMutation =
       error: string;
     };
 
-export function TaskManagerComponent() {
-  const lists = useTasks();
-  const summary = useQuery(api.tasks.summary);
-  const [newTask, setNewTask] = useState("");
+export function Notes() {
+  const lists = useNotes();
+  const summary = useQuery(api.notes.summary);
+  const [newNote, setNewNote] = useState("");
   const [isAdding, setIsAdding] = useState(false);
-  const [mutatingTasks, setMutatingTasks] = useState<
-    Record<Id<"tasks">, TaskMutation>
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [mutatingNotes, setMutatingNotes] = useState<
+    Record<Id<"notes">, NoteMutation>
   >({});
-  const addTaskAction = useAction(api.tasks.add);
-  const toggleCompletedMutation = useMutation(api.tasks.toggleCompleted);
-  const clearCompletedTasksMutation = useMutation(api.tasks.clearCompleted);
-  const deleteListMutation = useMutation(api.tasks.deleteList);
-  const createSummaryAction = useAction(api.tasks.createSummary);
+  const addNoteAction = useAction(api.notes.add);
+  const toggleCompletedMutation = useMutation(api.notes.toggleCompleted);
+  const clearCompletedMutation = useMutation(api.notes.clearCompleted);
+  const deleteListMutation = useMutation(api.notes.deleteList);
+  const createSummaryAction = useAction(api.notes.createSummary);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
 
-  const addTask = async () => {
-    if (newTask.trim() === "") return;
+  const addNote = async () => {
+    if (newNote.trim() === "") return;
 
     try {
       setIsAdding(true);
-      const test = await addTaskAction({ description: newTask });
+      const test = await addNoteAction({ description: newNote });
       console.log(test);
     } finally {
-      setNewTask("");
+      setNewNote("");
       setIsAdding(false);
     }
   };
 
-  const toggleTaskCompletion = async (taskId: Id<"tasks">) => {
+  const toggleCompletion = async (noteId: Id<"notes">) => {
     try {
-      setMutatingTasks((prev) => ({
+      setMutatingNotes((prev) => ({
         ...prev,
-        [taskId]: { isUpdating: true, error: null },
+        [noteId]: { isUpdating: true, error: null },
       }));
-      await toggleCompletedMutation({ taskId });
-      setMutatingTasks((prev) => ({
+      await toggleCompletedMutation({ noteId });
+      setMutatingNotes((prev) => ({
         ...prev,
-        [taskId]: { isUpdating: false, error: null },
+        [noteId]: { isUpdating: false, error: null },
       }));
     } catch (error) {
-      setMutatingTasks((prev) => ({
+      setMutatingNotes((prev) => ({
         ...prev,
-        [taskId]: { isUpdating: false, error: String(error) },
+        [noteId]: { isUpdating: false, error: String(error) },
       }));
     }
   };
 
-  const clearCompletedTasks = async (listId: Id<"taskLists">) => {
+  const clearCompleted = async (listId: Id<"noteLists">) => {
     try {
-      await clearCompletedTasksMutation({ listId });
+      await clearCompletedMutation({ listId });
     } catch (error) {
       console.error(error);
     }
   };
 
-  const deleteList = async (listId: Id<"taskLists">) => {
+  const deleteList = async (listId: Id<"noteLists">) => {
     const currentSelectedListId = selectedListId!;
 
     try {
@@ -102,16 +103,19 @@ export function TaskManagerComponent() {
 
   const generateSummary = async () => {
     try {
+      setIsGeneratingSummary(true);
       await createSummaryAction();
     } catch (error) {
       console.error(error);
+    } finally {
+      setIsGeneratingSummary(false);
     }
   };
 
   const selectedList = lists.find((list) => list._id === selectedListId);
 
   const isListCompleted = (list: List) =>
-    list.tasks.length > 0 && list.tasks.every((task) => task.isCompleted);
+    list.notes.length > 0 && list.notes.every((note) => note.isCompleted);
 
   return (
     <div className="container mx-auto p-4 flex flex-col h-screen max-w-5xl">
@@ -119,18 +123,18 @@ export function TaskManagerComponent() {
         <div className="flex-grow">
           <Input
             placeholder="Enter new note..."
-            value={newTask}
-            onChange={(e) => setNewTask(e.target.value)}
+            value={newNote}
+            onChange={(e) => setNewNote(e.target.value)}
             className="text-lg p-6"
           />
         </div>
         <Button
           onClick={() => {
-            void addTask();
+            void addNote();
           }}
-          disabled={newTask.trim() === "" || isAdding}
+          disabled={newNote.trim() === "" || isAdding}
           size="icon"
-          aria-label="Add task"
+          aria-label="Add note"
         >
           {isAdding ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -162,7 +166,7 @@ export function TaskManagerComponent() {
                 <Check className="h-4 w-4" />
               ) : (
                 "(" +
-                list.tasks.filter((task) => !task.isCompleted).length +
+                list.notes.filter((note) => !note.isCompleted).length +
                 ")"
               )}
             </Badge>
@@ -172,19 +176,25 @@ export function TaskManagerComponent() {
 
       <div className="flex-1 overflow-hidden">
         {!selectedList && summary && !summary.isStale ? (
-          <Markdown>{summary.summary}</Markdown>
+          <div
+            className="mx-auto text-xl leading-relaxed markdown"
+            style={{ maxWidth: "500px" }}
+          >
+            <Markdown options={{ forceBlock: true }}>
+              {summary.summary}
+            </Markdown>
+          </div>
         ) : null}
-        {!selectedList && (!summary || summary?.isStale) ? (
+        {!selectedList && (summary === null || (summary && summary.isStale)) ? (
           <div className="flex items-center justify-center h-full">
-            <Button
-              size="lg"
-              variant="outline"
+            <SparkleButton
+              loading={isGeneratingSummary}
               onClick={() => {
                 void generateSummary();
               }}
             >
-              <Wand2 className="h-6 w-6" />
-            </Button>
+              Create summary
+            </SparkleButton>
           </div>
         ) : null}
         {selectedList && (
@@ -196,10 +206,10 @@ export function TaskManagerComponent() {
                     size="sm"
                     variant="outline"
                     onClick={() => {
-                      void clearCompletedTasks(selectedList._id);
+                      void clearCompleted(selectedList._id);
                     }}
                     disabled={
-                      !selectedList.tasks.some((task) => task.isCompleted)
+                      !selectedList.notes.some((note) => note.isCompleted)
                     }
                   >
                     <CheckSquare className="h-4 w-4" />
@@ -221,21 +231,21 @@ export function TaskManagerComponent() {
                 </div>
               </div>
 
-              {selectedList.tasks.map((task) => (
+              {selectedList.notes.map((note) => (
                 <div
-                  key={task._id}
-                  className={`flex items-center space-x-2 mb-2 px-4 ${mutatingTasks[task._id]?.isUpdating ? "opacity-50" : ""} ${mutatingTasks[task._id]?.error ? "text-red-600" : ""}`}
+                  key={note._id}
+                  className={`flex items-center space-x-2 mb-2 px-4 ${mutatingNotes[note._id]?.isUpdating ? "opacity-50" : ""} ${mutatingNotes[note._id]?.error ? "text-red-600" : ""}`}
                 >
                   <Checkbox
-                    id={`task-${task._id}`}
-                    checked={task.isCompleted}
-                    onCheckedChange={() => void toggleTaskCompletion(task._id)}
+                    id={`note-${note._id}`}
+                    checked={note.isCompleted}
+                    onCheckedChange={() => void toggleCompletion(note._id)}
                   />
                   <label
-                    htmlFor={`task-${task._id}`}
-                    className={`flex-1 ${task.isCompleted ? "line-through text-gray-500" : ""}`}
+                    htmlFor={`note-${note._id}`}
+                    className={`flex-1 ${note.isCompleted ? "line-through text-gray-500" : ""}`}
                   >
-                    {task.description}
+                    {note.description}
                   </label>
                 </div>
               ))}

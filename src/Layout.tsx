@@ -22,27 +22,8 @@ export function Layout({
       </header>
       <main className="flex grow flex-col overflow-hidden">{children}</main>
       <footer className="border-t hidden sm:block">
-        <div className="container py-4 text-sm leading-loose">
-          Built with ❤️ at{" "}
-          <FooterLink href="https://www.convex.dev/">Convex</FooterLink>.
-          Powered by Convex,{" "}
-          <FooterLink href="https://vitejs.dev">Vite</FooterLink>,{" "}
-          <FooterLink href="https://react.dev/">React</FooterLink> and{" "}
-          <FooterLink href="https://ui.shadcn.com/">shadcn/ui</FooterLink>.
-        </div>
+        <div className="container py-4 text-sm leading-loose"></div>
       </footer>
     </div>
-  );
-}
-
-function FooterLink({ href, children }: { href: string; children: ReactNode }) {
-  return (
-    <a
-      href={href}
-      className="underline underline-offset-4 hover:no-underline"
-      target="_blank"
-    >
-      {children}
-    </a>
   );
 }

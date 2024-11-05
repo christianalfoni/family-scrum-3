@@ -19,19 +19,22 @@ export default defineSchema({
   })
     .index("email", ["email"])
     .index("phone", ["phone"]),
-  tasks: defineTable({
+  notes: defineTable({
     userId: v.id("users"),
     familyId: v.id("families"),
     description: v.string(),
     isCompleted: v.boolean(),
-    listId: v.id("taskLists"),
+    listId: v.id("noteLists"),
   })
     .index("by_family", ["familyId"])
     .index("by_list", ["listId"]),
   families: defineTable({
     createdBy: v.id("users"),
+    language: v.string(),
+    description: v.string(),
+    members: v.array(v.id("users")),
   }),
-  taskLists: defineTable({
+  noteLists: defineTable({
     name: v.string(),
     description: v.string(),
     familyId: v.id("families"),

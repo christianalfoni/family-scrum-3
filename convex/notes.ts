@@ -1,4 +1,3 @@
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { ConvexError, v } from "convex/values";
 
 import {
@@ -7,7 +6,6 @@ import {
   mutation,
   MutationCtx,
   query,
-  QueryCtx,
 } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { OpenAI } from "openai";
@@ -17,37 +15,9 @@ import { ParsedChatCompletion } from "openai/resources/beta/chat/completions.mjs
 import { Doc, Id } from "./_generated/dataModel";
 import { ChatCompletion } from "openai/resources/index.mjs";
 import { RegisteredAction, RegisteredQuery } from "convex/server";
+import { authenticate, authenticateWithFamily } from "./utils";
 
 const openai = new OpenAI();
-
-async function authenticate(ctx: QueryCtx) {
-  const userId = await getAuthUserId(ctx);
-
-  if (!userId) {
-    throw new ConvexError("Not signed in");
-  }
-
-  const user = await ctx.db.get(userId);
-
-  if (!user) {
-    throw new ConvexError("User not found");
-  }
-
-  return {
-    userId,
-    familyId: user.familyId,
-  };
-}
-
-async function authenticateWithFamily(ctx: QueryCtx) {
-  const { userId, familyId } = await authenticate(ctx);
-
-  if (!familyId) {
-    throw new ConvexError("Not in a family");
-  }
-
-  return { userId, familyId };
-}
 
 async function setStaleSummary(ctx: MutationCtx, familyId: Id<"families">) {
   const summary = await ctx.db
@@ -71,37 +41,43 @@ export const all = query({
       return [];
     }
 
-    const tasks = await ctx.db
-      .query("tasks")
+    const notes = await ctx.db
+      .query("notes")
       .withIndex("by_family", (q) => q.eq("familyId", familyId))
       .collect();
 
-    return tasks;
+    return notes;
   },
 });
 
 const NoteAssignment = z.object({
   notes: z.array(z.object({ description: z.string() })),
   list: z.object({ name: z.string(), description: z.string() }),
+  existingListNameToRename: z.optional(z.string()),
 });
 
 export const add = action({
   args: { description: v.string() },
   handler: async (ctx, { description }) => {
-    const taskLists = await ctx.runQuery(api.tasks.lists, {});
+    const [noteLists, family] = await Promise.all([
+      ctx.runQuery(api.notes.lists, {}),
+      ctx.runQuery(api.users.family),
+    ]);
     const completion: ParsedChatCompletion<z.infer<typeof NoteAssignment>> =
       await openai.beta.chat.completions.parse({
         model: "gpt-4o-2024-08-06",
+        temperature: 0.2,
         messages: [
           {
             role: "system",
-            content: `You will receive a note in Norwegian. Follow these instructions:
+            content: `You will receive a note in ${family.language}. Follow these instructions:
               
 - Identify which list such a note should be added to
+- If there is an existing related list, rename that list 
 - When creating a new list, avoid too generic names that will capture many notes
 - When choosing an existing list, make sure the note fits the list's purpose
 - Identify if the note should be split up into multiple actionable notes
-- All note descriptions and list names should be in Norwegian`,
+- All note descriptions and list names should be in ${family.language}`,
           },
           {
             role: "user",
@@ -111,7 +87,7 @@ ${description}
 
 And the following lists are available:
 
-${taskLists.map((list) => `- ${list.name} : ${list.description}`).join("\n")}
+${noteLists.map((list) => `- ${list.name} : ${list.description}`).join("\n")}
 `,
           },
         ],
@@ -124,13 +100,23 @@ ${taskLists.map((list) => `- ${list.name} : ${list.description}`).join("\n")}
       throw new ConvexError("No result");
     }
 
-    const list = taskLists.find((list) => list.name === result.list.name);
-    let listId: Id<"taskLists">;
+    const list = noteLists.find((list) => list.name === result.list.name);
+    const listToRename = noteLists.find(
+      (list) => list.name === result.existingListNameToRename,
+    );
+    let listId: Id<"noteLists">;
 
-    if (list) {
+    if (listToRename) {
+      await ctx.runMutation(internal.notes.updateNoteList, {
+        listId: listToRename._id,
+        name: result.list.name,
+        description: result.list.description,
+      });
+      listId = listToRename._id;
+    } else if (list) {
       listId = list._id;
     } else {
-      listId = await ctx.runMutation(internal.tasks.addTaskList, {
+      listId = await ctx.runMutation(internal.notes.addNoteList, {
         name: result.list.name,
         description: result.list.description,
       });
@@ -138,7 +124,7 @@ ${taskLists.map((list) => `- ${list.name} : ${list.description}`).join("\n")}
 
     await Promise.all(
       result.notes.map((note) =>
-        ctx.runMutation(internal.tasks.addTask, {
+        ctx.runMutation(internal.notes.addNote, {
           description: note.description,
           listId: listId,
         }),
@@ -147,12 +133,12 @@ ${taskLists.map((list) => `- ${list.name} : ${list.description}`).join("\n")}
   },
 });
 
-export const addTaskList = internalMutation({
+export const addNoteList = internalMutation({
   args: { name: v.string(), description: v.string() },
   handler: async (ctx, { name, description }) => {
     const { familyId } = await authenticateWithFamily(ctx);
 
-    return ctx.db.insert("taskLists", {
+    return ctx.db.insert("noteLists", {
       name,
       description,
       familyId,
@@ -160,8 +146,8 @@ export const addTaskList = internalMutation({
   },
 });
 
-export const addTask = internalMutation({
-  args: { description: v.string(), listId: v.id("taskLists") },
+export const addNote = internalMutation({
+  args: { description: v.string(), listId: v.id("noteLists") },
   handler: async (ctx, { description, listId }) => {
     const { familyId, userId } = await authenticateWithFamily(ctx);
 
@@ -169,7 +155,7 @@ export const addTask = internalMutation({
       throw new ConvexError("Not in a family");
     }
 
-    await ctx.db.insert("tasks", {
+    await ctx.db.insert("notes", {
       description,
       familyId,
       userId,
@@ -184,7 +170,7 @@ export const addTask = internalMutation({
 export const lists: RegisteredQuery<
   "public",
   Record<string, never>,
-  Promise<Doc<"taskLists">[]>
+  Promise<Doc<"noteLists">[]>
 > = query({
   handler: async (ctx) => {
     const { familyId } = await authenticate(ctx);
@@ -194,7 +180,7 @@ export const lists: RegisteredQuery<
     }
 
     const lists = await ctx.db
-      .query("taskLists")
+      .query("noteLists")
       .withIndex("by_family", (q) => q.eq("familyId", familyId))
       .collect();
 
@@ -203,22 +189,22 @@ export const lists: RegisteredQuery<
 });
 
 export const toggleCompleted = mutation({
-  args: { taskId: v.id("tasks") },
-  handler: async (ctx, { taskId }) => {
+  args: { noteId: v.id("notes") },
+  handler: async (ctx, { noteId }) => {
     const { familyId } = await authenticateWithFamily(ctx);
 
     if (!familyId) {
       throw new ConvexError("Not in a family");
     }
 
-    const task = await ctx.db.get(taskId);
+    const note = await ctx.db.get(noteId);
 
-    if (!task || task.familyId !== familyId) {
-      throw new ConvexError("Task not found");
+    if (!note || note.familyId !== familyId) {
+      throw new ConvexError("Note not found");
     }
 
-    await ctx.db.patch(taskId, {
-      isCompleted: !task.isCompleted,
+    await ctx.db.patch(noteId, {
+      isCompleted: !note.isCompleted,
     });
 
     await setStaleSummary(ctx, familyId);
@@ -226,7 +212,7 @@ export const toggleCompleted = mutation({
 });
 
 export const clearCompleted = mutation({
-  args: { listId: v.id("taskLists") },
+  args: { listId: v.id("noteLists") },
   handler: async (ctx, { listId }) => {
     const { familyId } = await authenticateWithFamily(ctx);
 
@@ -236,15 +222,15 @@ export const clearCompleted = mutation({
       throw new ConvexError("List not found");
     }
 
-    const tasks = await ctx.db
-      .query("tasks")
+    const notes = await ctx.db
+      .query("notes")
       .withIndex("by_list", (q) => q.eq("listId", listId))
       .collect();
 
     await Promise.all(
-      tasks
-        .filter((task) => task.isCompleted)
-        .map((task) => ctx.db.delete(task._id)),
+      notes
+        .filter((note) => note.isCompleted)
+        .map((note) => ctx.db.delete(note._id)),
     );
 
     await setStaleSummary(ctx, familyId);
@@ -252,7 +238,7 @@ export const clearCompleted = mutation({
 });
 
 export const deleteList = mutation({
-  args: { listId: v.id("taskLists") },
+  args: { listId: v.id("noteLists") },
   handler: async (ctx, { listId }) => {
     const { familyId } = await authenticateWithFamily(ctx);
 
@@ -262,18 +248,18 @@ export const deleteList = mutation({
       throw new ConvexError("List not found");
     }
 
-    const tasks = await ctx.db
-      .query("tasks")
+    const notes = await ctx.db
+      .query("notes")
       .withIndex("by_list", (q) => q.eq("listId", listId))
       .collect();
 
-    const isAllCompleted = tasks.every((task) => task.isCompleted);
+    const isAllCompleted = notes.every((note) => note.isCompleted);
 
     if (!isAllCompleted) {
-      throw new ConvexError("Not all tasks are completed");
+      throw new ConvexError("Not all notes are completed");
     }
 
-    await ctx.runMutation(api.tasks.clearCompleted, { listId });
+    await ctx.runMutation(api.notes.clearCompleted, { listId });
 
     await ctx.db.delete(listId);
 
@@ -308,9 +294,10 @@ export const createSummary: RegisteredAction<
   Promise<void>
 > = action({
   handler: async (ctx) => {
-    const [summary, tasks] = await Promise.all([
-      ctx.runQuery(api.tasks.summary),
-      ctx.runQuery(api.tasks.all),
+    const [summary, notes, family] = await Promise.all([
+      ctx.runQuery(api.notes.summary),
+      ctx.runQuery(api.notes.all),
+      ctx.runQuery(api.users.family),
     ]);
 
     const completion: ChatCompletion = await openai.chat.completions.create({
@@ -318,13 +305,13 @@ export const createSummary: RegisteredAction<
       messages: [
         {
           role: "system",
-          content: `You are a Norwegian family assistant. You will get a list of notes and should create a brief summary of the notes, but highlighting notes that is considered an event. The summary should be in Norwegian and you should respond without a title to the summary.`,
+          content: `You are a ${family} family assistant. You will get a list of notes and should create a brief summary of the notes, but highlighting notes that is considered an event. The summary should be in ${family.language} and you should respond without a title to the summary. End the response by writing some encouraging words to the family.`,
         },
         {
           role: "user",
           content: `This is the list of notes:
           
-${tasks.map((task) => `- ${task.description}`).join("\n")}
+${notes.map((note) => `- ${note.description}`).join("\n")}
 `,
         },
       ],
@@ -336,7 +323,7 @@ ${tasks.map((task) => `- ${task.description}`).join("\n")}
       throw new ConvexError("No summary result");
     }
 
-    await ctx.runMutation(internal.tasks.insertSummary, {
+    await ctx.runMutation(internal.notes.insertSummary, {
       summary: result,
       summaryId: summary?._id,
     });
@@ -360,5 +347,27 @@ export const insertSummary = internalMutation({
         summary,
       });
     }
+  },
+});
+
+export const updateNoteList = internalMutation({
+  args: {
+    listId: v.id("noteLists"),
+    name: v.string(),
+    description: v.string(),
+  },
+  handler: async (ctx, { listId, name, description }) => {
+    const { familyId } = await authenticateWithFamily(ctx);
+
+    const list = await ctx.db.get(listId);
+
+    if (list?.familyId !== familyId) {
+      throw new ConvexError("List not found");
+    }
+
+    await ctx.db.patch(listId, {
+      name,
+      description,
+    });
   },
 });

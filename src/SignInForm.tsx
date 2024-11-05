@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useState } from "react";
+import { PhysicsSpinner } from "./components/ui/physics-spinner";
 
 type SignInState =
   | {
@@ -43,9 +44,7 @@ export function SignInForm() {
       <div className="max-w-[384px] mx-auto flex flex-col my-auto gap-4 pb-8">
         {isSigningIn ? (
           <>
-            <h2 className="font-semibold text-2xl tracking-tight">
-              Signing in...
-            </h2>
+            <PhysicsSpinner />
           </>
         ) : (
           <>

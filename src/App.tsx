@@ -8,10 +8,13 @@ import {
   AuthLoading,
 } from "convex/react";
 import { api } from "../convex/_generated/api";
-import { TaskManagerComponent } from "./components/task-manager";
+import { Notes } from "./components/Notes";
+import { PhysicsSpinner } from "./components/ui/physics-spinner";
+import { Onboarding } from "./components/Onboarding";
 
 export default function App() {
   const user = useQuery(api.users.viewer);
+
   return (
     <Layout
       menu={
@@ -21,10 +24,17 @@ export default function App() {
       }
     >
       <>
-        <AuthLoading>Signing in...</AuthLoading>
-        <Authenticated>
-          <TaskManagerComponent />
-        </Authenticated>
+        <AuthLoading>
+          <div className="flex justify-center items-center h-screen">
+            <PhysicsSpinner />
+          </div>
+        </AuthLoading>
+
+        {user && (
+          <Authenticated>
+            {user?.familyId ? <Notes /> : <Onboarding />}
+          </Authenticated>
+        )}
         <Unauthenticated>
           <SignInForm />
         </Unauthenticated>
