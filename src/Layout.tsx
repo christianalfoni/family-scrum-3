@@ -20,7 +20,9 @@ export function Layout({
           {menu}
         </nav>
       </header>
-      <main className="flex grow flex-col overflow-hidden">{children}</main>
+      <main className="flex grow flex-col overflow-y-auto mb-6">
+        {children}
+      </main>
       <footer className="border-t hidden sm:block">
         <div className="container py-4 text-sm leading-loose"></div>
       </footer>

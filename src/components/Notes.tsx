@@ -122,14 +122,14 @@ export function Notes() {
   const selectedList = lists.find((list) => list._id === selectedListId);
 
   const isListCompleted = (list: List) =>
-    list.notes.length > 0 && list.notes.every((note) => note.isCompleted);
+    list.notes.length === 0 || list.notes.every((note) => note.isCompleted);
 
   return (
     <div className="container mx-auto p-4 flex flex-col h-screen max-w-5xl">
       <div className="mb-4 flex items-center space-x-2 relative">
         <div className="flex-grow relative">
           <Textarea
-            placeholder="Enter new note..."
+            placeholder="What needs to be done?"
             value={newNote}
             onChange={(e) => setNewNote(e.target.value)}
             className="text-lg p-4"
@@ -143,7 +143,7 @@ export function Notes() {
               disabled={newNote.trim() === ""}
               loading={isAdding}
             >
-              Add
+              Share
             </SparkleButton>
           </div>
         </div>
@@ -179,7 +179,7 @@ export function Notes() {
         })}
       </div>
 
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1">
         {!selectedList && summary && !summary.isStale ? (
           <div
             className="mx-auto text-xl leading-relaxed markdown"

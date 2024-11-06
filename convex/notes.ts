@@ -100,14 +100,38 @@ export const add = action({
         messages: [
           {
             role: "system",
-            content: `You will receive a note in ${family.language}. Follow these instructions:
-              
-- Identify which list such a note should be added to
-- If there is an existing related list, rename that list 
-- When creating a new list, avoid too generic names that will capture many notes
-- When choosing an existing list, make sure the note fits the list's purpose
-- Identify if the note should be split up into multiple actionable notes
-- All note descriptions and list names should be in ${family.language}`,
+            content: `You will receive a prompt from a family member to help the rest of the family. Follow these instructions:
+	1.	Language Consistency:
+	  •	All note descriptions and list names should be in ${family.language}.
+	2.	Note Creation:
+    •	Split the prompt into multiple concise notes.
+    •	Avoid verbs and actions in the notes themselves; instead, use nouns or noun phrases.
+    •	Make the list names actionable, representing the action to be taken.
+	3.	List Organization:
+    •	For each note, determine the most appropriate list.
+    •	Only add a note to an existing list if it is strongly related to the content of that list.
+    •	If no existing list is a strong match, create a new list for that note.
+    •	Do not add notes to lists where they do not belong.
+    •	Do not rename existing lists unless absolutely necessary for clarity.
+	4.	List Renaming (Optional):
+    •	If an existing list can be better named to encompass the new notes without losing the relevance of existing notes, you may rename it.
+    •	Only rename a list if it improves clarity and accurately reflects all its notes.
+	5.	Examples:
+    •	Prompt: “Buy milk and eggs. Schedule a dentist appointment. Clean the garage.”
+      •	List: “Groceries”
+        •	Milk
+        •	Eggs
+      •	List: “Appointments to Schedule”
+        •	Dentist appointment
+      •	List: “Household Chores”
+        •	Clean the garage
+    •	Prompt: “Plan family vacation. Renew car insurance. Buy birthday gift for mom.”
+      •	List: “Family Vacation Planning”
+        •	Plan family vacation
+      •	List: “Administrative Tasks”
+        •	Renew car insurance
+      •	List: “Gifts to Purchase”
+        •	Birthday gift for mom`,
           },
           {
             role: "user",
@@ -340,14 +364,16 @@ export const createSummary: RegisteredAction<
   - You will get a list of notes that has been added by family members and you should give a brief summary of them
   - Highlight notes that is considered an event
   - The summary should be in ${family.language} and you should respond without a title to the summary
-  - End the response by writing some encouraging words to the family`,
+  - End the response by writing some encouraging words to the family
+  
+  Todays date is ${new Date().toLocaleDateString("en-US", { weekday: "long" })} ${new Date().toISOString().split("T")[0]}`,
         },
         {
           role: "user",
           content: `This is our family, written in ${family.language}:
   ${family.description}          
         
-  Todays date is ${new Date().toLocaleDateString("en-US", { weekday: "long" })} ${new Date().toISOString().split("T")[0]} and this is the list of notes:
+  This is the list of notes:
         
   ${notes.map((note) => `${note.description}${note.isCompleted ? " (COMPLETED)" : ""}`).join("\n")}
   `,
