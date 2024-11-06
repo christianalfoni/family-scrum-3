@@ -1,17 +1,17 @@
 import { useState } from "react";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import Markdown from "markdown-to-jsx";
 import {
-  Loader2,
-  Plus,
+  ListChecksIcon,
   Trash2,
   Check,
   CheckSquare,
   ListCheck,
+  Wand2,
 } from "lucide-react";
 import { List, useNotes } from "@/hooks/useNotes";
 import { useAction, useMutation, useQuery } from "convex/react";
@@ -126,29 +126,27 @@ export function Notes() {
 
   return (
     <div className="container mx-auto p-4 flex flex-col h-screen max-w-5xl">
-      <div className="mb-4 flex items-center space-x-2">
-        <div className="flex-grow">
-          <Input
+      <div className="mb-4 flex items-center space-x-2 relative">
+        <div className="flex-grow relative">
+          <Textarea
             placeholder="Enter new note..."
             value={newNote}
             onChange={(e) => setNewNote(e.target.value)}
-            className="text-lg p-6"
+            className="text-lg p-4"
           />
+          <div className="absolute bottom-2 right-2">
+            <SparkleButton
+              icon={<ListChecksIcon className="h-4 w-4 mr-2" />}
+              onClick={() => {
+                void addNote();
+              }}
+              disabled={newNote.trim() === ""}
+              loading={isAdding}
+            >
+              Add
+            </SparkleButton>
+          </div>
         </div>
-        <Button
-          onClick={() => {
-            void addNote();
-          }}
-          disabled={newNote.trim() === "" || isAdding}
-          size="icon"
-          aria-label="Add note"
-        >
-          {isAdding ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Plus className="h-4 w-4" />
-          )}
-        </Button>
       </div>
 
       <div className="mb-4 flex justify-center flex-wrap gap-2">
@@ -208,9 +206,12 @@ export function Notes() {
             </Card>
           </div>
         ) : null}
-        {!selectedList && (summary === null || (summary && summary.isStale)) ? (
+        {!selectedList &&
+        lists.length &&
+        (summary === null || (summary && summary.isStale)) ? (
           <div className="flex items-center justify-center h-full">
             <SparkleButton
+              icon={<Wand2 className="w-6 h-6 mr-2" />}
               loading={isGeneratingSummary}
               onClick={() => {
                 void generateSummary();

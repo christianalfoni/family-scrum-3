@@ -43,9 +43,9 @@ export function SignInForm() {
     <div className="container my-auto">
       <div className="max-w-[384px] mx-auto flex flex-col my-auto gap-4 pb-8">
         {isSigningIn ? (
-          <>
+          <div className="flex justify-center items-center h-full">
             <PhysicsSpinner />
-          </>
+          </div>
         ) : (
           <>
             <h2 className="font-semibold text-2xl tracking-tight">

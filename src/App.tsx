@@ -11,15 +11,24 @@ import { api } from "../convex/_generated/api";
 import { Notes } from "./components/Notes";
 import { PhysicsSpinner } from "./components/ui/physics-spinner";
 import { Onboarding } from "./components/Onboarding";
+import { InviteCodeModalComponent } from "./components/invite-code-modal";
+import { useState } from "react";
 
 export default function App() {
   const user = useQuery(api.users.viewer);
+  const [isInviteModalOpen, setInviteModalOpen] = useState(false);
 
   return (
     <Layout
       menu={
         <Authenticated>
-          <UserMenu>{user?.name ?? user?.email}</UserMenu>
+          <UserMenu
+            onInvite={() => {
+              setInviteModalOpen(true);
+            }}
+          >
+            {user?.name ?? user?.email}
+          </UserMenu>
         </Authenticated>
       }
     >
@@ -33,6 +42,10 @@ export default function App() {
         {user && (
           <Authenticated>
             {user?.familyId ? <Notes /> : <Onboarding />}
+            <InviteCodeModalComponent
+              isOpen={isInviteModalOpen}
+              onClose={() => setInviteModalOpen(false)}
+            />
           </Authenticated>
         )}
         <Unauthenticated>

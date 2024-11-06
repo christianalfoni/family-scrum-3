@@ -337,7 +337,7 @@ export const createSummary: RegisteredAction<
           role: "system",
           content: `You are a ${family} family assistant. Please follow these instructions:
         
-  - You will get a list of notes and you should give a brief summary of them
+  - You will get a list of notes that has been added by family members and you should give a brief summary of them
   - Highlight notes that is considered an event
   - The summary should be in ${family.language} and you should respond without a title to the summary
   - End the response by writing some encouraging words to the family`,

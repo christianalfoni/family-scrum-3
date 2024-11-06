@@ -1,24 +1,30 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Wand2 } from "lucide-react";
+import React from "react";
 
 export function SparkleButton({
   onClick,
   loading,
   children,
+  disabled,
+  icon,
 }: {
   onClick: () => void;
   loading: boolean;
-  children: React.ReactNode;
+  disabled?: boolean;
+  icon: React.ReactNode;
+  children?: React.ReactNode;
 }) {
   return (
     <div className="flex items-center justify-center">
       <motion.button
         onClick={onClick}
-        disabled={loading}
-        className={`relative px-6 py-3 text-white rounded-full font-semibold text-lg shadow-lg transition-all duration-300 ${
+        disabled={loading || disabled}
+        className={`relative px-2 py-1 text-white rounded-md font-semibold text-lg shadow-lg transition-all duration-300 ${
           loading
             ? "bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 background-animate"
-            : "bg-indigo-600 hover:bg-indigo-700"
+            : disabled
+              ? "bg-indigo-600 opacity-50"
+              : "bg-indigo-600 hover:bg-indigo-700"
         }`}
         whileTap={{ scale: 0.95 }}
       >
@@ -27,7 +33,7 @@ export function SparkleButton({
             animate={loading ? { scale: [1, 1.2, 1] } : { scale: 1 }}
             transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
           >
-            <Wand2 className="w-6 h-6 mr-2" />
+            {icon}
           </motion.span>
           {children}
         </span>

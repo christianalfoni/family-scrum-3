@@ -1,8 +1,14 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { mutation, query, QueryCtx } from "./_generated/server";
+import {
+  internalMutation,
+  mutation,
+  query,
+  QueryCtx,
+} from "./_generated/server";
 import { ConvexError, v } from "convex/values";
-import { RegisteredQuery } from "convex/server";
+import { RegisteredMutation, RegisteredQuery } from "convex/server";
 import { Doc } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 
 async function authenticate(ctx: QueryCtx) {
   const userId = await getAuthUserId(ctx);
@@ -78,5 +84,69 @@ export const family: RegisteredQuery<
     }
 
     return family;
+  },
+});
+
+export const invite: RegisteredMutation<
+  "public",
+  Record<string, never>,
+  Promise<{
+    code: string;
+    ttl: number;
+  }>
+> = mutation({
+  handler: async (ctx) => {
+    const { familyId } = await authenticate(ctx);
+
+    if (!familyId) {
+      throw new ConvexError("Not in a family");
+    }
+
+    const code = Math.random().toString().substring(2, 6);
+    const ttl = 15;
+
+    const inviteCodeId = await ctx.db.insert("inviteCodes", {
+      familyId,
+      code,
+      ttl,
+    });
+
+    await ctx.scheduler.runAfter(ttl * 1000, internal.users.deleteInvite, {
+      id: inviteCodeId,
+    });
+
+    return {
+      code,
+      ttl,
+    };
+  },
+});
+
+export const deleteInvite = internalMutation({
+  args: { id: v.id("inviteCodes") },
+  handler: async (ctx, { id }) => {
+    await ctx.db.delete(id);
+  },
+});
+
+export const joinFamily = mutation({
+  args: { code: v.string() },
+  handler: async (ctx, { code }) => {
+    const { userId, familyId } = await authenticate(ctx);
+
+    if (familyId) {
+      throw new ConvexError("Already in a family");
+    }
+
+    const inviteCode = await ctx.db
+      .query("inviteCodes")
+      .filter((q) => q.eq("code", code))
+      .unique();
+
+    if (!inviteCode) {
+      throw new ConvexError("Invalid invite code");
+    }
+
+    await ctx.db.patch(userId, { familyId: inviteCode.familyId });
   },
 });

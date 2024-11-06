@@ -12,7 +12,13 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { PersonIcon } from "@radix-ui/react-icons";
 import { ReactNode } from "react";
 
-export function UserMenu({ children }: { children: ReactNode }) {
+export function UserMenu({
+  onInvite,
+  children,
+}: {
+  onInvite: () => void;
+  children: ReactNode;
+}) {
   return (
     <div className="flex items-center gap-2 text-sm font-medium">
       {children}
@@ -30,6 +36,9 @@ export function UserMenu({ children }: { children: ReactNode }) {
             Theme
             <ThemeToggle />
           </DropdownMenuLabel>
+          <DropdownMenuItem onClick={onInvite}>
+            Invite to family
+          </DropdownMenuItem>
           <SignOutButton />
         </DropdownMenuContent>
       </DropdownMenu>

@@ -10,9 +10,13 @@ import { UserPlus, Users } from "lucide-react";
 
 type Props = {
   onCreateFamilyClick: () => void;
+  onJoinFamilyClick: () => void;
 };
 
-export function FamilyChoiceComponent({ onCreateFamilyClick }: Props) {
+export function FamilyChoiceComponent({
+  onCreateFamilyClick,
+  onJoinFamilyClick,
+}: Props) {
   return (
     <div className="flex items-center justify-center">
       <div className="space-y-6">
@@ -53,7 +57,7 @@ export function FamilyChoiceComponent({ onCreateFamilyClick }: Props) {
               <Button
                 className="w-full"
                 variant="outline"
-                onClick={() => console.log("Join Family clicked")}
+                onClick={onJoinFamilyClick}
               >
                 Join Family
               </Button>

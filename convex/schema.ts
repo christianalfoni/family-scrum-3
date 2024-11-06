@@ -42,4 +42,9 @@ export default defineSchema({
     isStale: v.boolean(),
     date: v.string(),
   }).index("by_family", ["familyId"]),
+  inviteCodes: defineTable({
+    familyId: v.id("families"),
+    code: v.string(),
+    ttl: v.number(),
+  }),
 });
