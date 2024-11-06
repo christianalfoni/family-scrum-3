@@ -140,7 +140,7 @@ export const joinFamily = mutation({
 
     const inviteCode = await ctx.db
       .query("inviteCodes")
-      .filter((q) => q.eq("code", code))
+      .filter((q) => q.eq(q.field("code"), code))
       .unique();
 
     if (!inviteCode) {
